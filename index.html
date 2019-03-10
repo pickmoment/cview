@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+
+<style>
+    /* img {
+        width: auto !important;
+        height: 1000px;
+    } */
+
+</style>
+<script>
+    function init() {
+        getComics()
+    }
+
+    window.addEventListener('resize', function(event){
+        document.getElementById('page').style.height = (window.innerHeight - 40) + 'px';
+    });
+</script>
+</head>
+<body onload="init()" onkeydown="inputKey()">
+<div>
+    <select id='comics' onchange="changeComic()"></select>
+    <select id='chapters' onchange="changeChapter()"></select>
+</div>
+<img id="page" onclick="next()"/>
+
+<script>
+var pages = null;
+var i = 0;
+
+function inputKey(e) {
+    e = e || window.event;
+
+    if (e.keyCode == 37) {
+        prev()
+    } else {
+        next()
+    }
+}
+
+function getComics() {
+    pywebview.api.comics().then(showComics)
+}
+
+function showComics(response) {
+    var comics = document.getElementById('comics')
+    for (var i = 0; i < response.length; i++){
+        var opt = document.createElement('option');
+        opt.value = response[i]['url'];
+        opt.innerHTML = response[i]['title'];
+        comics.appendChild(opt);
+    }    
+    getChapters(response[0]['url'])
+}
+
+function changeComic() {
+    var comics = document.getElementById('comics')
+    getChapters(comics.options[comics.selectedIndex].value)
+}
+
+function changeChapter() {
+    var chapters = document.getElementById('chapters')
+    getPages(chapters.options[chapters.selectedIndex].value)
+}
+
+function getChapters(url) {
+    pywebview.api.chapters(url).then(showChapters)
+}
+
+function showChapters(response) {
+    var chapters = document.getElementById('chapters')
+    while (chapters.options.length > 0) {                
+        chapters.remove(0);
+    }   
+    for (var i = 0; i < response.length; i++){
+        var opt = document.createElement('option');
+        opt.value = response[i]['url'];
+        opt.innerHTML = response[i]['title'];
+        chapters.appendChild(opt);
+    }
+    getPages(response[0]['url'])
+}
+
+function getPages(url) {
+    pywebview.api.pages(url).then(showResponse)
+}
+
+function viewFirstPage() {
+    i = 0;
+    var page = document.getElementById('page')
+    page.src = pages[i]
+}
+
+function showResponse(response) {
+    pages = response;
+    viewFirstPage();
+}
+
+function next() {
+    if (pages && i < pages.length-1) {
+        page.src = pages[++i];
+    } else {
+        alert('마지막 페이지입니다.')
+    }
+}
+
+function prev() {
+    if (pages && i > 0) {
+        page.src = pages[--i];
+    } else {
+        alert('첫 페이지입니다.')
+    }
+}
+
+
+</script>
+</body>
+</html>
