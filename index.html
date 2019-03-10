@@ -25,7 +25,7 @@
     <select id='comics' onchange="changeComic()"></select>
     <select id='chapters' onchange="changeChapter()"></select>
 </div>
-<img id="page" onclick="next()"/>
+<img id="page" onclick="next()"/> <span id='curPage'></span> / <span id='totalPage'></span>
 
 <script>
 var pages = null;
@@ -62,6 +62,7 @@ function changeComic() {
 }
 
 function changeChapter() {
+    i = 0
     var chapters = document.getElementById('chapters')
     getPages(chapters.options[chapters.selectedIndex].value)
 }
@@ -92,6 +93,8 @@ function viewFirstPage() {
     i = 0;
     var page = document.getElementById('page')
     page.src = pages[i]
+    document.getElementById('totalPage').innerText = pages.length
+    document.getElementById('curPage').innerText = i+1
 }
 
 function showResponse(response) {
@@ -103,8 +106,15 @@ function next() {
     if (pages && i < pages.length-1) {
         page.src = pages[++i];
     } else {
-        alert('마지막 페이지입니다.')
+        var chapters = document.getElementById('chapters')
+        if (chapters.selectedIndex < chapters.options.length - 1) {
+            chapters.selectedIndex++
+            changeChapter()
+        } else {
+            alert('마지막 페이지입니다.')
+        }
     }
+    document.getElementById('curPage').innerText = i+1
 }
 
 function prev() {
@@ -113,6 +123,7 @@ function prev() {
     } else {
         alert('첫 페이지입니다.')
     }
+    document.getElementById('curPage').innerText = i+1
 }
 
 
