@@ -9,6 +9,10 @@
         height: 1000px;
     } */
 
+    #hiddenPage {
+        display: none;
+    }
+
 </style>
 <script>
     function init() {
@@ -28,6 +32,7 @@
     <input id='autoPeriod' value="3000">
 </div>
 <img id="page" onclick="next()"/> <span id='curPage'></span> / <span id='totalPage'></span>
+<img id='hiddenPage'>
 
 <script>
 var pages = null;
@@ -58,9 +63,12 @@ function autoNext() {
 function inputKey(e) {
     e = e || window.event;
 
-    if (e.keyCode == 37) {
+    const prevKeys = [37, 38]
+    const nextKeys = [32, 39, 40]
+
+    if (prevKeys.indexOf(e.keyCode) >= 0) {
         prev()
-    } else {
+    } else if (nextKeys.indexOf(e.keyCode) >= 0) {
         next()
     }
 }
@@ -116,7 +124,9 @@ function getPages(url) {
 function viewFirstPage() {
     i = 0;
     var page = document.getElementById('page')
+    var hiddenPage = document.getElementById('hiddenPage')
     page.src = pages[i]
+    hiddenPage.src = pages[i+1]
     document.getElementById('totalPage').innerText = pages.length
     document.getElementById('curPage').innerText = i+1
 }
@@ -127,8 +137,14 @@ function showResponse(response) {
 }
 
 function next() {
+    var page = document.getElementById('page')
+    var hiddenPage = document.getElementById('hiddenPage')
+
     if (pages && i < pages.length-1) {
         page.src = pages[++i];
+        if (i < pages.length-2) {
+            hiddenPage.src = pages[i+1]
+        }
     } else {
         var chapters = document.getElementById('chapters')
         if (chapters.selectedIndex < chapters.options.length - 1) {
