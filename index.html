@@ -24,12 +24,36 @@
 <div>
     <select id='comics' onchange="changeComic()"></select>
     <select id='chapters' onchange="changeChapter()"></select>
+    <input type="checkbox" onclick="autoCheck(this)">
+    <input id='autoPeriod' value="3000">
 </div>
 <img id="page" onclick="next()"/> <span id='curPage'></span> / <span id='totalPage'></span>
 
 <script>
 var pages = null;
 var i = 0;
+var autoTime;
+
+function autoCheck(cb) {
+    var autoPeriod = document.getElementById('autoPeriod').value
+    if (cb.checked) {
+        autoTime = setTimeout(function() {
+            autoNext();
+        }, autoPeriod)
+    } else {
+        if (autoTime) {
+            clearTimeout(autoTime)
+        }
+    }
+}
+
+function autoNext() {
+    var autoPeriod = document.getElementById('autoPeriod').value
+    next()
+    autoTime = setTimeout(function() {
+            autoNext();
+        }, autoPeriod)
+}
 
 function inputKey(e) {
     e = e || window.event;
