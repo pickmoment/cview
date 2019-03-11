@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head lang="en">
+<title>Comics</title>
 <meta charset="UTF-8">
 
 <style>
@@ -14,17 +15,14 @@
     }
 
 </style>
-<script>
-    function init() {
-        getComics()
-    }
-
-    window.addEventListener('resize', function(event){
-        document.getElementById('page').style.height = (window.innerHeight - 40) + 'px';
-    });
-</script>
+    <script type="text/javascript" src="/eel.js"></script>
+    <script>
+        window.addEventListener('resize', function(event){
+            document.getElementById('page').style.height = (window.innerHeight - 40) + 'px';
+        });
+    </script>
 </head>
-<body onload="init()" onkeydown="inputKey()">
+<body onkeydown="inputKey()">
 <div>
     <select id='comics' onchange="changeComic()"></select>
     <select id='chapters' onchange="changeChapter()"></select>
@@ -74,7 +72,7 @@ function inputKey(e) {
 }
 
 function getComics() {
-    pywebview.api.comics().then(showComics)
+    eel.comics()(showComics)
 }
 
 function showComics(response) {
@@ -100,7 +98,7 @@ function changeChapter() {
 }
 
 function getChapters(url) {
-    pywebview.api.chapters(url).then(showChapters)
+    eel.chapters(url)(showChapters)
 }
 
 function showChapters(response) {
@@ -118,7 +116,7 @@ function showChapters(response) {
 }
 
 function getPages(url) {
-    pywebview.api.pages(url).then(showResponse)
+    eel.pages(url)(showResponse)
 }
 
 function viewFirstPage() {
@@ -165,6 +163,9 @@ function prev() {
     }
     document.getElementById('curPage').innerText = i+1
 }
+
+
+getComics()
 
 
 </script>

@@ -1,6 +1,11 @@
-import webview
 import requests
 from bs4 import BeautifulSoup
+
+import eel
+
+# Set web files folder and optionally specify which file types to check for eel.expose()
+eel.init('web', allowed_extensions=['.js', '.html'])
+
 
 comics_dict = {
     '킹덤': 'https://www.mkmk02.com/chapter.php?n=comics&t=3703',
@@ -30,23 +35,32 @@ comics_dict = {
     'MIX 믹스': 'https://www.mkmk02.com/chapter.php?n=comics&t=6375'
 }
 
-class Api:
-    def comics(self, param):
-        result = [{'title': key, 'url': value} for key, value in comics_dict.items()]
-        return result
+@eel.expose
+def comics():
+    result = [{'title': key, 'url': value} for key, value in comics_dict.items()]
+    return result
 
-    def chapters(self, url):
-        r = requests.get(url)
-        soup = BeautifulSoup(r.text, 'lxml')
-        links = soup.find_all('a', {'class': 'chapterLink'})
-        return [{'title': link['title'], 'url': link['href']} for link in reversed(links)]
+@eel.expose
+def chapters(url):
+    print('chapters:', url)
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, 'lxml')
+    links = soup.find_all('a', {'class': 'chapterLink'})
+    return [{'title': link['title'], 'url': link['href']} for link in reversed(links)]
 
-    def pages(self, url):
-        r = requests.get(url)
-        soup = BeautifulSoup(r.text, 'lxml')
-        imgs = soup.find_all('img', {'class': 'viewPng'})
-        return [img.attrs.get('data-src') for img in imgs]
+@eel.expose
+def pages(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, 'lxml')
+    imgs = soup.find_all('img', {'class': 'viewPng'})
+    return [img.attrs.get('data-src') for img in imgs]
 
 if __name__ == '__main__':
-    api = Api()
-    webview.create_window('commics', 'index.html', fullscreen=True, js_api=api, debug=True)
+    web_app_options = {
+        'mode': "chrome-app", #or "chrome"
+        'port': 5555,
+        'chromeFlags': ["--start-fullscreen", "--browser-startup-dialog"]
+    }
+
+    # eel.start('index.html', options=web_app_options)    # Start
+    eel.start('index.html')    # Start
