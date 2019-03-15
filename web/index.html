@@ -27,9 +27,9 @@
     <input type='text' name="searchTitle" onkeydown="searchComics()">
     <select id='comics' onchange="changeComic()"></select>
     <select id='chapters' onchange="changeChapter()"></select>
-    <input type="checkbox" onclick="autoCheck(this)">
-    <input id='autoPeriod' value="3000">
-    <span id='curPage'></span> / <span id='totalPage'></span>
+    <input type="checkbox" onclick="autoCheck(this)">자동넘김
+    <input id='autoPeriod' value="5" size="2">초
+    <input id='curPage' size="3" onchange="onChangePage()"> / <span id='totalPage'></span>
 </div>
 <img id="page" onclick="next()"/>
 <img id='hiddenPage'>
@@ -41,18 +41,22 @@ var autoTime;
 
 function searchComics(e) {
     e = e || window.event;
-    console.log(e)
+
     if (e.keyCode === 13) {
         eel.search(e.target.value)(showComics)
     }   
 }
 
+function onChangePage(e) {
+    viewPage()
+}
+
 function autoCheck(cb) {
-    var autoPeriod = document.getElementById('autoPeriod').value
+    var autoPeriod = parseInt(document.getElementById('autoPeriod').value)
     if (cb.checked) {
         autoTime = setTimeout(function() {
             autoNext();
-        }, autoPeriod)
+        }, autoPeriod * 1000)
     } else {
         if (autoTime) {
             clearTimeout(autoTime)
@@ -61,18 +65,18 @@ function autoCheck(cb) {
 }
 
 function autoNext() {
-    var autoPeriod = document.getElementById('autoPeriod').value
+    var autoPeriod = parseInt(document.getElementById('autoPeriod').value)
     next()
     autoTime = setTimeout(function() {
             autoNext();
-        }, autoPeriod)
+        }, autoPeriod * 1000)
 }
 
 function inputKey(e) {
     e = e || window.event;
 
-    const prevKeys = [37, 38]
-    const nextKeys = [32, 39, 40]
+    const prevKeys = [37, 38, 33]
+    const nextKeys = [32, 39, 40, 34]
 
     if (prevKeys.indexOf(e.keyCode) >= 0) {
         prev()
@@ -103,7 +107,6 @@ function changeComic() {
 }
 
 function changeChapter() {
-    i = 0
     var chapters = document.getElementById('chapters')
     getPages(chapters.options[chapters.selectedIndex].value)
 }
@@ -131,13 +134,10 @@ function getPages(url) {
 }
 
 function viewFirstPage() {
-    i = 0;
-    var page = document.getElementById('page')
-    var hiddenPage = document.getElementById('hiddenPage')
-    page.src = pages[i]
-    hiddenPage.src = pages[i+1]
+    var curPage = document.getElementById('curPage')
+    curPage.value = 1
     document.getElementById('totalPage').innerText = pages.length
-    document.getElementById('curPage').innerText = i+1
+    viewPage()
 }
 
 function showResponse(response) {
@@ -145,34 +145,44 @@ function showResponse(response) {
     viewFirstPage();
 }
 
-function next() {
+function viewPage() {
+    var curPage = document.getElementById('curPage')
+    var i = parseInt(curPage.value)
     var page = document.getElementById('page')
     var hiddenPage = document.getElementById('hiddenPage')
+    page.src = pages[i-1]
+    if (i < pages.length-1) {
+        hiddenPage.src = pages[i]
+    }
+}
 
-    if (pages && i < pages.length-1) {
-        page.src = pages[++i];
-        if (i < pages.length-2) {
-            hiddenPage.src = pages[i+1]
-        }
+function next() {
+    var curPage = document.getElementById('curPage')
+    var i = parseInt(curPage.value)
+
+    if (pages && i < pages.length) {
+        curPage.value = i+1
     } else {
         var chapters = document.getElementById('chapters')
         if (chapters.selectedIndex < chapters.options.length - 1) {
             chapters.selectedIndex++
             changeChapter()
         } else {
-            alert('마지막 페이지입니다.')
+            alert('마지막입니다.')
         }
     }
-    document.getElementById('curPage').innerText = i+1
+    viewPage();
 }
 
 function prev() {
-    if (pages && i > 0) {
-        page.src = pages[--i];
+    var curPage = document.getElementById('curPage')
+    var i = parseInt(curPage.value)
+    if (pages && i > 1) {
+        curPage.value = i-1
     } else {
-        alert('첫 페이지입니다.')
+        alert('처음입니다.')
     }
-    document.getElementById('curPage').innerText = i+1
+    viewPage()
 }
 
 
