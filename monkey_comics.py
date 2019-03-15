@@ -36,13 +36,20 @@ comics_dict = {
 }
 
 @eel.expose
+def search(title):
+    url = 'https://www.mkmk02.com/search.php'
+    data = {'q': title}
+    r = requests.post(url, data=data)
+    books = r.json()['area']
+    return [{'title': book['title'], 'url': book['href']} for book in books]
+
+@eel.expose
 def comics():
     result = [{'title': key, 'url': value} for key, value in comics_dict.items()]
     return result
 
 @eel.expose
 def chapters(url):
-    print('chapters:', url)
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
     links = soup.find_all('a', {'class': 'chapterLink'})

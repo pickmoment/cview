@@ -24,18 +24,28 @@
 </head>
 <body onkeydown="inputKey()">
 <div>
+    <input type='text' name="searchTitle" onkeydown="searchComics()">
     <select id='comics' onchange="changeComic()"></select>
     <select id='chapters' onchange="changeChapter()"></select>
     <input type="checkbox" onclick="autoCheck(this)">
     <input id='autoPeriod' value="3000">
+    <span id='curPage'></span> / <span id='totalPage'></span>
 </div>
-<img id="page" onclick="next()"/> <span id='curPage'></span> / <span id='totalPage'></span>
+<img id="page" onclick="next()"/>
 <img id='hiddenPage'>
 
 <script>
 var pages = null;
 var i = 0;
 var autoTime;
+
+function searchComics(e) {
+    e = e || window.event;
+    console.log(e)
+    if (e.keyCode === 13) {
+        eel.search(e.target.value)(showComics)
+    }   
+}
 
 function autoCheck(cb) {
     var autoPeriod = document.getElementById('autoPeriod').value
@@ -77,6 +87,7 @@ function getComics() {
 
 function showComics(response) {
     var comics = document.getElementById('comics')
+    comics.options.length = 0;
     for (var i = 0; i < response.length; i++){
         var opt = document.createElement('option');
         opt.value = response[i]['url'];
