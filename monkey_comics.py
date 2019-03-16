@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+import json
 
 import eel
 
@@ -35,18 +36,28 @@ comics_dict = {
     'MIX 믹스': 'https://www.mkmk02.com/chapter.php?n=comics&t=6375'
 }
 
+view_snapshot = {}
+view_snapshot_file = 'view_snapshot.json'
+
 @eel.expose
 def search(title):
     url = 'https://www.mkmk02.com/search.php'
     data = {'q': title}
     r = requests.post(url, data=data)
     books = r.json()['area']
-    return [{'title': book['title'], 'url': book['href']} for book in books]
+    result = {}
+    for book in books:
+        key = book['href']
+        result[key] = {}
+        result[key]['title'] = book['title']
+        if key in view_snapshot:
+            result[key]['chapter'] = view_snapshot[key]['chapter']
+            result[key]['page'] = view_snapshot[key]['page']
+    return result
 
 @eel.expose
-def comics():
-    result = [{'title': key, 'url': value} for key, value in comics_dict.items()]
-    return result
+def snapshot():
+    return view_snapshot
 
 @eel.expose
 def chapters(url):
@@ -62,7 +73,21 @@ def pages(url):
     imgs = soup.find_all('img', {'class': 'viewPng'})
     return [img.attrs.get('data-src') for img in imgs]
 
+@eel.expose
+def view(comic_url, title, chapter_url, page):
+    view_snapshot[comic_url] = {
+        'title': title,
+        'chapter': chapter_url,
+        'page': page
+    }
+    with open(view_snapshot_file, 'w', encoding='UTF-8-sig') as outfile:  
+        json.dump(view_snapshot, outfile, indent=2, ensure_ascii=False)
+
+
 if __name__ == '__main__':
+    with open(view_snapshot_file, encoding='UTF-8-sig') as json_file:  
+        view_snapshot = json.load(json_file)
+
     web_app_options = {
         'mode': "chrome-app", #or "chrome"
         'port': 5555,

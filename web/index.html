@@ -18,16 +18,16 @@
     <script type="text/javascript" src="/eel.js"></script>
     <script>
         window.addEventListener('resize', function(event){
-            document.getElementById('page').style.height = (window.innerHeight - 40) + 'px';
+            document.getElementById('page').style.height = (window.innerHeight - 45) + 'px';
         });
     </script>
 </head>
 <body onkeydown="inputKey()">
 <div>
     <input type='text' name="searchTitle" onkeydown="searchComics()">
-    <select id='comics' onchange="changeComic()"></select>
-    <select id='chapters' onchange="changeChapter()"></select>
-    <input type="checkbox" onclick="autoCheck(this)">자동넘김
+    <select id='comics' onchange="onChangeComic()"></select>
+    <select id='chapters' onchange="onChangeChapter()"></select>
+    <input type="checkbox" onclick="onAutoCheck(this)">자동넘김
     <input id='autoPeriod' value="5" size="2">초
     <input id='curPage' size="3" onchange="onChangePage()"> / <span id='totalPage'></span>
 </div>
@@ -39,11 +39,19 @@ var pages = null;
 var i = 0;
 var autoTime;
 
+var view_snapshot;
+
+var selectedComic
+var selectedChapter
+
+var curPage = document.getElementById('curPage')
+var totalPage = document.getElementById('totalPage')
+
 function searchComics(e) {
     e = e || window.event;
 
     if (e.keyCode === 13) {
-        eel.search(e.target.value)(showComics)
+        eel.search(e.target.value)(refreshComics)
     }   
 }
 
@@ -51,7 +59,7 @@ function onChangePage(e) {
     viewPage()
 }
 
-function autoCheck(cb) {
+function onAutoCheck(cb) {
     var autoPeriod = parseInt(document.getElementById('autoPeriod').value)
     if (cb.checked) {
         autoTime = setTimeout(function() {
@@ -85,64 +93,85 @@ function inputKey(e) {
     }
 }
 
-function getComics() {
-    eel.comics()(showComics)
+function getViewSnapshot() {
+    eel.snapshot()(refreshComics)
 }
 
-function showComics(response) {
+function make_option(value, text) {
+    var opt = document.createElement('option');
+    opt.value = value;
+    opt.innerHTML = text;
+    return opt
+}
+
+function refreshComics(response) {
+    view_snapshot = response
     var comics = document.getElementById('comics')
     comics.options.length = 0;
-    for (var i = 0; i < response.length; i++){
-        var opt = document.createElement('option');
-        opt.value = response[i]['url'];
-        opt.innerHTML = response[i]['title'];
-        comics.appendChild(opt);
-    }    
-    getChapters(response[0]['url'])
+    comics.appendChild(make_option('', ''));
+    for (var key in view_snapshot) {
+        comics.appendChild(make_option(key, view_snapshot[key]['title']));
+    }
+    chapters.options.length = 0
+    selectedComic = null
+    selectedChapter = null
+    curPage.value = ''
+    totalPage.innerText = ''
 }
 
-function changeComic() {
+function onChangeComic() {
     var comics = document.getElementById('comics')
-    getChapters(comics.options[comics.selectedIndex].value)
+    if (comics.selectedIndex > 0) {
+        selectedComic = comics.options[comics.selectedIndex].value
+        getChapters(comics.options[comics.selectedIndex].value)
+    }
 }
 
-function changeChapter() {
+function onChangeChapter() {
     var chapters = document.getElementById('chapters')
+    selectedChapter = chapters.options[chapters.selectedIndex].value
     getPages(chapters.options[chapters.selectedIndex].value)
 }
 
 function getChapters(url) {
-    eel.chapters(url)(showChapters)
+    eel.chapters(url)(refreshChapters)
 }
 
-function showChapters(response) {
+function refreshChapters(response) {
     var chapters = document.getElementById('chapters')
-    while (chapters.options.length > 0) {                
-        chapters.remove(0);
-    }   
+    chapters.options.length = 0
     for (var i = 0; i < response.length; i++){
-        var opt = document.createElement('option');
-        opt.value = response[i]['url'];
-        opt.innerHTML = response[i]['title'];
-        chapters.appendChild(opt);
+        chapters.appendChild(make_option(response[i]['url'], response[i]['title']));
     }
-    getPages(response[0]['url'])
+    
+    if (view_snapshot && view_snapshot[selectedComic] && view_snapshot[selectedComic]['chapter']) {
+        selectedChapter = view_snapshot[selectedComic]['chapter']
+        chapters.value = selectedChapter
+    } else {
+        selectedChapter = chapters.value
+    }
+
+    getPages(selectedChapter)
 }
 
 function getPages(url) {
-    eel.pages(url)(showResponse)
+    eel.pages(url)(refreshPages)
 }
 
-function viewFirstPage() {
+function viewStartPage() {
     var curPage = document.getElementById('curPage')
-    curPage.value = 1
-    document.getElementById('totalPage').innerText = pages.length
+    if (view_snapshot && view_snapshot[selectedComic] && view_snapshot[selectedComic]['page']) {
+        curPage.value = view_snapshot[selectedComic]['page']
+    } else {
+        curPage.value = 1
+    }
+    totalPage.innerText = pages.length
     viewPage()
 }
 
-function showResponse(response) {
+function refreshPages(response) {
     pages = response;
-    viewFirstPage();
+    viewStartPage();
 }
 
 function viewPage() {
@@ -154,6 +183,17 @@ function viewPage() {
     if (i < pages.length-1) {
         hiddenPage.src = pages[i]
     }
+
+    callViewLog()
+}
+
+function callViewLog() {
+    var comics = document.getElementById('comics')
+    var chapters = document.getElementById('chapters')
+    var curPage = document.getElementById('curPage')
+    var viewComic = comics.options[comics.selectedIndex]
+    var viewChapter = chapters.options[chapters.selectedIndex]
+    eel.view(viewComic.value, viewComic.text, viewChapter.value, curPage.value)
 }
 
 function next() {
@@ -166,7 +206,7 @@ function next() {
         var chapters = document.getElementById('chapters')
         if (chapters.selectedIndex < chapters.options.length - 1) {
             chapters.selectedIndex++
-            changeChapter()
+            onChangeChapter()
         } else {
             alert('마지막입니다.')
         }
@@ -186,7 +226,7 @@ function prev() {
 }
 
 
-getComics()
+getViewSnapshot()
 
 
 </script>
