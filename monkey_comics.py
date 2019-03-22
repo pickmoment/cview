@@ -2,12 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
-
-import eel
-
-# Set web files folder and optionally specify which file types to check for eel.expose()
-eel.init('web', allowed_extensions=['.js', '.html'])
-
+import zipfile
+import os
 
 comics_dict = {
     '킹덤': 'https://www.mkmk02.com/chapter.php?n=comics&t=3703',
@@ -40,7 +36,6 @@ comics_dict = {
 view_snapshot = {}
 view_snapshot_file = 'view_snapshot.json'
 
-@eel.expose
 def search(title):
     url = 'https://www.mkmk02.com/search.php'
     data = {'q': title}
@@ -56,11 +51,11 @@ def search(title):
             result[key]['page'] = view_snapshot[key]['page']
     return result
 
-@eel.expose
 def snapshot():
+    with open(view_snapshot_file, encoding='UTF-8-sig') as json_file:  
+        view_snapshot = json.load(json_file)
     return view_snapshot
 
-@eel.expose
 def chapters(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
@@ -70,14 +65,12 @@ def chapters(url):
     
     return [{'title': link['title'], 'url': link['href']} for link in links]
 
-@eel.expose
 def pages(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
     imgs = soup.find_all('img', {'class': 'viewPng'})
     return [img.attrs.get('data-src') for img in imgs]
 
-@eel.expose
 def view(comic_url, title, chapter_url, page):
     view_snapshot[comic_url] = {
         'title': title,
@@ -87,16 +80,18 @@ def view(comic_url, title, chapter_url, page):
     with open(view_snapshot_file, 'w', encoding='UTF-8-sig') as outfile:  
         json.dump(view_snapshot, outfile, indent=2, ensure_ascii=False)
 
+def download(title, chapter_url):
+    imgs = pages(chapter_url)
+    zip_file = zipfile.ZipFile(title + '.zip', 'w')
+    for i, img in enumerate(imgs):
+        ext = img.split('.')[-1]
+        r = requests.get(img, stream=True)
+        file_name = '{}_{:03d}.{}'.format(title, i, ext)
+        with open(file_name, 'wb') as f:
+            for chunk in r.iter_content(1024):
+                f.write(chunk)
+        zip_file.write(file_name, compress_type=zipfile.ZIP_DEFLATED)
+        os.remove(file_name)
 
-if __name__ == '__main__':
-    with open(view_snapshot_file, encoding='UTF-8-sig') as json_file:  
-        view_snapshot = json.load(json_file)
-
-    web_app_options = {
-        'mode': "chrome-app", #or "chrome"
-        'port': 5555,
-        'chromeFlags': ["--start-fullscreen", "--browser-startup-dialog"]
-    }
-
-    # eel.start('index.html', options=web_app_options)    # Start
-    eel.start('index.html')    # Start
+    zip_file.close()
+        

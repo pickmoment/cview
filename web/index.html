@@ -39,6 +39,8 @@
             <input type="checkbox" v-model="auto_checked" @change="onAutoCheck()">자동넘김
             <input v-model="auto_seconds" size="2">초
             <input v-model="current_page" size="3" @change="viewPage()"> / <span id='totalPage'>{{ total_page }}</span>
+            <button @click="download_chapter()">장Down</button>
+            <button @click="download_book()">책Down</button>
         </div>
         <img id="page" :src="page_src" @click="next()" @keydown="next()"/>
         <img id='hiddenPage' :src="cache_page_src">
@@ -189,6 +191,12 @@
                 this.auto_timer = setTimeout(function() {
                     self.autoNext()
                 }, this.auto_seconds * 1000)
+            },
+            download_chapter: function() {
+                eel.download_chapter(this.selected_chapter.title, this.selected_chapter.url)
+            },
+            download_book: function() {
+                eel.download_book(this.selected_book.url)
             }
         }
     })
