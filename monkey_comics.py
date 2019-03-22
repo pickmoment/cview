@@ -52,8 +52,10 @@ def search(title):
     return result
 
 def snapshot():
-    with open(view_snapshot_file, encoding='UTF-8-sig') as json_file:  
-        view_snapshot = json.load(json_file)
+    global view_snapshot
+    if view_snapshot:
+        with open(view_snapshot_file, encoding='UTF-8-sig') as json_file:  
+            view_snapshot = json.load(json_file)
     return view_snapshot
 
 def chapters(url):
@@ -72,6 +74,7 @@ def pages(url):
     return [img.attrs.get('data-src') for img in imgs]
 
 def view(comic_url, title, chapter_url, page):
+    global view_snapshot
     view_snapshot[comic_url] = {
         'title': title,
         'chapter': chapter_url,
