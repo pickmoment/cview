@@ -3,6 +3,7 @@
 <head lang="en">
 <title>Comics</title>
 <meta charset="UTF-8">
+<script src="http://unpkg.com/vue"></script>
 
 <style>
     /* img {
@@ -20,213 +21,178 @@
         window.addEventListener('resize', function(event){
             document.getElementById('page').style.height = (window.innerHeight - 45) + 'px';
         });
+        window.addEventListener('load', function(event){
+            document.getElementById('page').style.height = (window.innerHeight - 45) + 'px';
+        });        
     </script>
 </head>
-<body onkeydown="inputKey()">
-<div>
-    <input type='text' name="searchTitle" onkeydown="searchComics()">
-    <select id='comics' onchange="onChangeComic()"></select>
-    <select id='chapters' onchange="onChangeChapter()"></select>
-    <input type="checkbox" onclick="onAutoCheck(this)">자동넘김
-    <input id='autoPeriod' value="5" size="2">초
-    <input id='curPage' size="3" onchange="onChangePage()"> / <span id='totalPage'></span>
-</div>
-<img id="page" onclick="next()"/>
-<img id='hiddenPage'>
+<body>
+    <div id="app">
+        <div>
+            <input type='text' v-model="search_title" @keydown="searchBooks()">
+            <select v-model="selected_book" @change="onChangeBook()">
+                <option v-for="book in books" :value="book">{{ book.title }}</option>
+            </select>
+            <select v-model="selected_chapter" @change="onChangeChapter()">
+                <option v-for="chapter in chapters" :value="chapter">{{ chapter.title }}</option>
+            </select>
+            <input type="checkbox" v-model="auto_checked" @change="onAutoCheck()">자동넘김
+            <input v-model="auto_seconds" size="2">초
+            <input v-model="current_page" size="3" @change="viewPage()"> / <span id='totalPage'>{{ total_page }}</span>
+        </div>
+        <img id="page" :src="page_src" @click="next()" @keydown="next()"/>
+        <img id='hiddenPage' :src="cache_page_src">
+    </div>
 
 <script>
-var pages = null;
-var i = 0;
-var autoTime;
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            view_snapshot: {},
+            books: [],
+            chapters: [],
+            search_title: '',
+            selected_book: null,
+            selected_chapter: null,
+            current_page: '',
+            total_page: '',
+            isComicChanged: false,
+            page_src: '',
+            cache_page_src: '',
+            auto_seconds: 10,
+            auto_checked: false,
+            auto_timer: null
+        },
+        created: function() {
+            eel.snapshot()(this.refreshBooks)
+        },
+        mounted: function() {
+            const self = this
+            window.addEventListener("keydown", function(e) {
+                const prevKeys = [37, 38, 33]
+                const nextKeys = [32, 39, 40, 34]
 
-var view_snapshot;
+                if (prevKeys.indexOf(e.keyCode) >= 0) {
+                    self.prev()
+                } else if (nextKeys.indexOf(e.keyCode) >= 0) {
+                    self.next()
+                }
+            });            
+        },
+        methods: {
+            refreshBooks: function(response) {
+                this.view_snapshot = response
+                this.books = []
+                for (var key in this.view_snapshot) {
+                    this.books.push({url: key, title: this.view_snapshot[key]['title']})
+                }
+                this.chapters = []
+                this.selected_book = null
+                this.selected_chapter = null
+                this.current_page = ''
+                this.total_page = ''                
+            },
+            searchBooks: function(e) {
+                e = e || window.event;
+                if (e.keyCode === 13) {
+                    eel.search(this.search_title)(this.refreshBooks)
+                }   
+            },
+            onChangeBook: function() {
+                this.isComicChanged = true
+                if (this.selected_book) {
+                    eel.chapters(this.selected_book.url)(this.refreshChapters)
+                }
+            },
+            refreshChapters: function(response) {
+                this.chapters = []
+                for (var i = 0; i < response.length; i++) {
+                    this.chapters.push({url: response[i]['url'], title: response[i]['title']})
+                }
+                
+                if (this.view_snapshot && this.view_snapshot[this.selected_book.url] && this.view_snapshot[this.selected_book.url]['chapter']) {
+                    this.selected_chapter = this.chapters.filter(chapter => chapter.url === this.view_snapshot[this.selected_book.url]['chapter'])[0]
+                } 
 
-var selectedComic
-var selectedChapter
+                eel.pages(this.selected_chapter.url)(this.refreshPages)
+            },            
+            onChangeChapter: function() {
+                if (this.selected_chapter) {
+                    eel.pages(this.selected_chapter.url)(this.refreshPages)
+                }
+            },
+            refreshPages: function(response) {
+                this.pages = response
+                if (this.view_snapshot && this.view_snapshot[this.selected_book.url] && this.view_snapshot[this.selected_book.url]['page'] && this.isComicChanged) {
+                    this.current_page = this.view_snapshot[this.selected_book.url]['page']
+                    this.isComicChanged = false
+                } else {
+                    this.current_page = 1
+                }
+                this.total_page = this.pages.length
+                this.viewPage()                
+            },
+            viewPage: function() {
+                var i = parseInt(this.current_page)
+                this.page_src = this.pages[i-1]
+                if (i < this.pages.length-1) {
+                    this.cache_page_src = this.pages[i]
+                }
 
-var curPage = document.getElementById('curPage')
-var totalPage = document.getElementById('totalPage')
+                this.view_snapshot[this.selected_book.url]['chapter'] = this.selected_chapter.url
+                this.view_snapshot[this.selected_book.url]['page'] = this.current_page
+                eel.view(this.selected_book.url, this.selected_book.title, this.selected_chapter.url, this.current_page)
+            },
+            prev: function() {
+                var i = parseInt(this.current_page)
+                
+                if (i > 1) {
+                    this.current_page = i-1
+                    this.viewPage()
+                } else {
+                    alert('첫 페이지입니다.')
+                }
+                
+            },
+            next: function() {
+                var i = parseInt(this.current_page)
 
-function searchComics(e) {
-    e = e || window.event;
-
-    if (e.keyCode === 13) {
-        eel.search(e.target.value)(refreshComics)
-    }   
-}
-
-function onChangePage(e) {
-    viewPage()
-}
-
-function onAutoCheck(cb) {
-    var autoPeriod = parseInt(document.getElementById('autoPeriod').value)
-    if (cb.checked) {
-        autoTime = setTimeout(function() {
-            autoNext();
-        }, autoPeriod * 1000)
-    } else {
-        if (autoTime) {
-            clearTimeout(autoTime)
+                if (this.pages && i < this.pages.length) {
+                    this.current_page = i+1
+                    this.viewPage();                
+                } else {
+                    for (var i = 0; i < this.chapters.length - 1; i++) {
+                        if (this.chapters[i] == this.selected_chapter) {
+                            this.selected_chapter = this.chapters[i+1]
+                            eel.pages(this.selected_chapter.url)(this.refreshPages)
+                            return
+                        }
+                    }
+                    alert('마지막입니다.')
+                }
+            },
+            onAutoCheck: function() {
+                var self = this;
+                if (this.auto_checked) {
+                    this.auto_timer = setTimeout(function() {
+                        self.autoNext()
+                    }, this.auto_seconds * 1000)
+                } else {
+                    if (this.auto_timer) {
+                        clearTimeout(this.auto_timer)
+                    }
+                }
+            },
+            autoNext: function() {
+                var self = this;
+                this.next()
+                this.auto_timer = setTimeout(function() {
+                    self.autoNext()
+                }, this.auto_seconds * 1000)
+            }
         }
-    }
-}
+    })
 
-function autoNext() {
-    var autoPeriod = parseInt(document.getElementById('autoPeriod').value)
-    next()
-    autoTime = setTimeout(function() {
-            autoNext();
-        }, autoPeriod * 1000)
-}
-
-function inputKey(e) {
-    e = e || window.event;
-
-    const prevKeys = [37, 38, 33]
-    const nextKeys = [32, 39, 40, 34]
-
-    if (prevKeys.indexOf(e.keyCode) >= 0) {
-        prev()
-    } else if (nextKeys.indexOf(e.keyCode) >= 0) {
-        next()
-    }
-}
-
-function getViewSnapshot() {
-    eel.snapshot()(refreshComics)
-}
-
-function make_option(value, text) {
-    var opt = document.createElement('option');
-    opt.value = value;
-    opt.innerHTML = text;
-    return opt
-}
-
-function refreshComics(response) {
-    view_snapshot = response
-    var comics = document.getElementById('comics')
-    comics.options.length = 0;
-    comics.appendChild(make_option('', ''));
-    for (var key in view_snapshot) {
-        comics.appendChild(make_option(key, view_snapshot[key]['title']));
-    }
-    chapters.options.length = 0
-    selectedComic = null
-    selectedChapter = null
-    curPage.value = ''
-    totalPage.innerText = ''
-}
-
-function onChangeComic() {
-    var comics = document.getElementById('comics')
-    if (comics.selectedIndex > 0) {
-        selectedComic = comics.options[comics.selectedIndex].value
-        getChapters(comics.options[comics.selectedIndex].value)
-    }
-}
-
-function onChangeChapter() {
-    var chapters = document.getElementById('chapters')
-    selectedChapter = chapters.options[chapters.selectedIndex].value
-    getPages(chapters.options[chapters.selectedIndex].value)
-}
-
-function getChapters(url) {
-    eel.chapters(url)(refreshChapters)
-}
-
-function refreshChapters(response) {
-    var chapters = document.getElementById('chapters')
-    chapters.options.length = 0
-    for (var i = 0; i < response.length; i++){
-        chapters.appendChild(make_option(response[i]['url'], response[i]['title']));
-    }
-    
-    if (view_snapshot && view_snapshot[selectedComic] && view_snapshot[selectedComic]['chapter']) {
-        selectedChapter = view_snapshot[selectedComic]['chapter']
-        chapters.value = selectedChapter
-    } else {
-        selectedChapter = chapters.value
-    }
-
-    getPages(selectedChapter)
-}
-
-function getPages(url) {
-    eel.pages(url)(refreshPages)
-}
-
-function viewStartPage() {
-    var curPage = document.getElementById('curPage')
-    if (view_snapshot && view_snapshot[selectedComic] && view_snapshot[selectedComic]['page']) {
-        curPage.value = view_snapshot[selectedComic]['page']
-    } else {
-        curPage.value = 1
-    }
-    totalPage.innerText = pages.length
-    viewPage()
-}
-
-function refreshPages(response) {
-    pages = response;
-    viewStartPage();
-}
-
-function viewPage() {
-    var curPage = document.getElementById('curPage')
-    var i = parseInt(curPage.value)
-    var page = document.getElementById('page')
-    var hiddenPage = document.getElementById('hiddenPage')
-    page.src = pages[i-1]
-    if (i < pages.length-1) {
-        hiddenPage.src = pages[i]
-    }
-
-    callViewLog()
-}
-
-function callViewLog() {
-    var comics = document.getElementById('comics')
-    var chapters = document.getElementById('chapters')
-    var curPage = document.getElementById('curPage')
-    var viewComic = comics.options[comics.selectedIndex]
-    var viewChapter = chapters.options[chapters.selectedIndex]
-    eel.view(viewComic.value, viewComic.text, viewChapter.value, curPage.value)
-}
-
-function next() {
-    var curPage = document.getElementById('curPage')
-    var i = parseInt(curPage.value)
-
-    if (pages && i < pages.length) {
-        curPage.value = i+1
-    } else {
-        var chapters = document.getElementById('chapters')
-        if (chapters.selectedIndex < chapters.options.length - 1) {
-            chapters.selectedIndex++
-            onChangeChapter()
-        } else {
-            alert('마지막입니다.')
-        }
-    }
-    viewPage();
-}
-
-function prev() {
-    var curPage = document.getElementById('curPage')
-    var i = parseInt(curPage.value)
-    if (pages && i > 1) {
-        curPage.value = i-1
-    } else {
-        alert('처음입니다.')
-    }
-    viewPage()
-}
-
-
-getViewSnapshot()
 
 
 </script>

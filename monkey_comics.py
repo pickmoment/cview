@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import re
 
 import eel
 
@@ -64,7 +65,10 @@ def chapters(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
     links = soup.find_all('a', {'class': 'chapterLink'})
-    return [{'title': link['title'], 'url': link['href']} for link in reversed(links)]
+    if len(links) > 1 and links[0]['title'] > links[1]['title']:
+        links = reversed(links)
+    
+    return [{'title': link['title'], 'url': link['href']} for link in links]
 
 @eel.expose
 def pages(url):
